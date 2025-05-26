@@ -2,19 +2,19 @@ package tokenizer
 
 import "fmt"
 
-type TokenType int
+type TokenType string
 
 const (
-	TokenTypeInteger TokenType = iota
-	TokenTypeFloat
-	TokenTypeString
-	TokenTypeIdentifier
-	TokenTypeOperator
-	TokenTypeLParen
-	TokenTypeRParen
-	TokenTypeEOF
-	TokenTypeInvalid
-	TokenTypeWhitespace
+	TokenTypeInteger    TokenType = "Integer"
+	TokenTypeFloat      TokenType = "Float"
+	TokenTypeString     TokenType = "String"
+	TokenTypeIdentifier TokenType = "Identifier"
+	TokenTypeOperator   TokenType = "Operator"
+	TokenTypeLParen     TokenType = "LParen"
+	TokenTypeRParen     TokenType = "RParen"
+	TokenTypeEOF        TokenType = "EOF"
+	TokenTypeInvalid    TokenType = "Invalid"
+	tokenTypeWhitespace TokenType = "Whitespace"
 )
 
 var InvalidToken = Token{Type: TokenTypeInvalid, Value: ""}
@@ -44,7 +44,7 @@ func (t Token) String() string {
 		return "(EOF)"
 	case TokenTypeInvalid:
 		return fmt.Sprintf("(Invalid %s)", t.Value)
-	case TokenTypeWhitespace:
+	case tokenTypeWhitespace:
 		return fmt.Sprintf("(Whitespace %s)", t.Value)
 	}
 	return fmt.Sprintf("(Unknown %s)", t.Value)

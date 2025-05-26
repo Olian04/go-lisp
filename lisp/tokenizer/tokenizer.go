@@ -5,147 +5,150 @@ import (
 )
 
 type Tokenizer struct {
-	source string
-	pos    int
-	Tokens chan Token
+	source    string
+	readerPos int
 }
 
 func New(ctx context.Context, source string) *Tokenizer {
-	t := &Tokenizer{
-		source: source,
-		pos:    0,
-		Tokens: make(chan Token),
+	return &Tokenizer{
+		source:    source,
+		readerPos: 0,
 	}
-	go func() {
-		for {
-			token := t.nextToken()
-			if token.Type == TokenTypeWhitespace {
-				continue
-			}
-			if token.Type == TokenTypeEOF {
-				close(t.Tokens)
-				return
-			}
-			select {
-			case <-ctx.Done():
-				return
-			case t.Tokens <- token:
-			}
-		}
-	}()
-	return t
 }
 
-func (t *Tokenizer) peek(offset int) rune {
-	if t.pos+offset < len(t.source) {
-		return rune(t.source[t.pos+offset])
+func (t *Tokenizer) NextToken() Token {
+	token := t.nextToken()
+	if token.Type == TokenTypeEOF {
+		return Token{Type: TokenTypeEOF, Value: ""}
+	}
+	if token.Type == tokenTypeWhitespace {
+		return t.NextToken()
+	}
+	return token
+}
+
+func (t *Tokenizer) peek(n int) rune {
+	if t.readerPos+n < len(t.source) {
+		return rune(t.source[t.readerPos+n])
 	}
 	return 0
 }
 
-func (t *Tokenizer) consume(n int) string {
-	s := t.source[t.pos : t.pos+n]
-	t.pos += n
-	return s
+func (t *Tokenizer) read(n int) string {
+	return t.source[t.readerPos : t.readerPos+n]
+}
+
+func (t *Tokenizer) incrementReader(n int) {
+	t.readerPos += n
 }
 
 func (t *Tokenizer) nextToken() Token {
-	if t.pos >= len(t.source) {
+	if t.readerPos >= len(t.source) {
 		return Token{Type: TokenTypeEOF, Value: ""}
 	}
-	syntax, ok := t.readSyntax()
-	if ok {
+	syntax, n := t.readSyntax()
+	if n > 0 {
+		t.incrementReader(n)
 		return syntax
 	}
-	number, ok := t.readNumber()
-	if ok {
+	number, n := t.readNumber()
+	if n > 0 {
+		t.incrementReader(n)
 		return number
 	}
-	str, ok := t.readString()
-	if ok {
+	str, n := t.readString()
+	if n > 0 {
+		t.incrementReader(n)
 		return str
 	}
-	identifier, ok := t.readIdentifier()
-	if ok {
+	identifier, n := t.readIdentifier()
+	if n > 0 {
+		t.incrementReader(n)
 		return identifier
 	}
-	op, ok := t.readOperator()
-	if ok {
+	op, n := t.readOperator()
+	if n > 0 {
+		t.incrementReader(n)
 		return op
 	}
-	whitespace, ok := t.readWhitespace()
-	if ok {
+	whitespace, n := t.readWhitespace()
+	if n > 0 {
+		t.incrementReader(n)
 		return whitespace
 	}
 	return InvalidToken
 }
 
-func (t *Tokenizer) readSyntax() (Token, bool) {
+func (t *Tokenizer) readSyntax() (Token, int) {
 	if t.peek(0) == '(' {
-		return Token{Type: TokenTypeLParen, Value: t.consume(1)}, true
+		return Token{Type: TokenTypeLParen, Value: t.read(1)}, 1
 	} else if t.peek(0) == ')' {
-		return Token{Type: TokenTypeRParen, Value: t.consume(1)}, true
+		return Token{Type: TokenTypeRParen, Value: t.read(1)}, 1
 	}
-	return InvalidToken, false
+	return InvalidToken, 0
 }
 
-func (t *Tokenizer) readNumber() (Token, bool) {
-	pos := t.pos
-	for isNumberChar(t.peek(0)) {
-		t.consume(1)
-	}
-	if t.peek(0) == '.' {
-		t.consume(1)
-		for isNumberChar(t.peek(0)) {
-			t.consume(1)
+func (t *Tokenizer) readNumber() (Token, int) {
+	number := t.lookahead(0, isNumberChar)
+	if number > 0 {
+		if t.peek(number) == '.' {
+			number += 1
+			number += t.lookahead(number, isNumberChar)
+			return Token{Type: TokenTypeFloat, Value: t.read(number)}, number
 		}
-		return Token{Type: TokenTypeFloat, Value: t.source[pos:t.pos]}, true
+		return Token{Type: TokenTypeInteger, Value: t.read(number)}, number
 	}
-	if pos != t.pos {
-		return Token{Type: TokenTypeInteger, Value: t.source[pos:t.pos]}, true
-	}
-	return InvalidToken, false
+	return InvalidToken, 0
 }
 
-func (t *Tokenizer) readString() (Token, bool) {
+func (t *Tokenizer) readString() (Token, int) {
 	if t.peek(0) == '"' {
-		t.consume(1)
-		for t.peek(0) != '"' {
-			t.consume(1)
+		str := t.lookahead(1, func(r rune) bool {
+			return r != '"'
+		})
+		str += 1
+
+		if t.peek(str) == '"' {
+			str += 1
+			return Token{Type: TokenTypeString, Value: t.read(str)}, str
 		}
-		return Token{Type: TokenTypeString, Value: t.consume(1)}, true
 	}
-	return InvalidToken, false
+	return InvalidToken, 0
 }
 
-func (t *Tokenizer) readIdentifier() (Token, bool) {
-	pos := t.pos
+func (t *Tokenizer) readIdentifier() (Token, int) {
 	if isIdentifierChar(t.peek(0), true) {
-		t.consume(1)
-		for isIdentifierChar(t.peek(0), false) {
-			t.consume(1)
+		identifier := t.lookahead(1, func(r rune) bool {
+			return isIdentifierChar(r, false)
+		})
+		if identifier > 0 {
+			return Token{Type: TokenTypeIdentifier, Value: t.read(identifier + 1)}, identifier + 1
 		}
-		return Token{Type: TokenTypeIdentifier, Value: t.source[pos:t.pos]}, true
 	}
-	return InvalidToken, false
+	return InvalidToken, 0
 }
 
-func (t *Tokenizer) readOperator() (Token, bool) {
+func (t *Tokenizer) readOperator() (Token, int) {
 	if isOperatorChar(t.peek(0)) {
-		return Token{Type: TokenTypeOperator, Value: t.consume(1)}, true
+		return Token{Type: TokenTypeOperator, Value: t.read(1)}, 1
 	}
-	return InvalidToken, false
+	return InvalidToken, 0
 }
 
-func (t *Tokenizer) readWhitespace() (Token, bool) {
-	pos := t.pos
-	for isWhitespaceChar(t.peek(0)) {
-		t.consume(1)
+func (t *Tokenizer) readWhitespace() (Token, int) {
+	whitespace := t.lookahead(0, isWhitespaceChar)
+	if whitespace > 0 {
+		return Token{Type: tokenTypeWhitespace, Value: t.read(whitespace)}, whitespace
 	}
-	if pos != t.pos {
-		return Token{Type: TokenTypeWhitespace, Value: t.source[pos:t.pos]}, true
+	return InvalidToken, 0
+}
+
+func (t *Tokenizer) lookahead(offset int, predicate func(r rune) bool) int {
+	i := 0
+	for predicate(t.peek(offset + i)) {
+		i++
 	}
-	return InvalidToken, false
+	return i
 }
 
 func isWhitespaceChar(r rune) bool {
