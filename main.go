@@ -1,26 +1,37 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
-	"time"
+	"os"
+	"strings"
 
 	"github.com/Olian04/go-lisp/lisp/parser"
 	"github.com/Olian04/go-lisp/lisp/tokenizer"
 )
 
 func main() {
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancel()
-	tok := tokenizer.New(ctx, "(+ 1 2 3)")
+	reader := bufio.NewReader(os.Stdin)
 	for {
-		token := tok.NextToken()
-		if token.Type == tokenizer.TokenTypeEOF {
+		fmt.Print("> ")
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Println("Error reading input:", err)
+			continue
+		}
+		input = strings.TrimSpace(input)
+		if input == "exit" {
 			break
 		}
-		fmt.Println(token)
+		tok := tokenizer.New(context.Background(), input)
+		for token := tok.NextToken(); token.Type != tokenizer.TokenTypeEOF; token = tok.NextToken() {
+			fmt.Println(token.String())
+		}
+		tok = tokenizer.New(context.Background(), input) // reset the tokenizer
+		fmt.Println("--------------------------------")
+		parser := parser.New(context.Background(), tok)
+		program := parser.Parse()
+		fmt.Println(program.String())
 	}
-	parser := parser.New(ctx, tok)
-	program := parser.Parse()
-	fmt.Println(program.String())
 }

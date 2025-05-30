@@ -2,9 +2,11 @@ package parser
 
 import (
 	"context"
-	"fmt"
+	"strconv"
 
 	"github.com/Olian04/go-lisp/lisp/ast"
+	"github.com/Olian04/go-lisp/lisp/ast/literal"
+	"github.com/Olian04/go-lisp/lisp/ast/sexp"
 	"github.com/Olian04/go-lisp/lisp/tokenizer"
 )
 
@@ -18,49 +20,67 @@ func New(ctx context.Context, tokenizer *tokenizer.Tokenizer) *Parser {
 
 func (p *Parser) Parse() ast.Program {
 	program := ast.Program{}
-	for {
-		token := p.tokenizer.NextToken()
-		if token.Type == tokenizer.TokenTypeEOF {
-			break
-		}
-		program.Statements = append(program.Statements, p.parseStatement())
-	}
+	tokenReader := NewTokenReader(p.tokenizer)
+	program.Statements = p.parseStatements(tokenReader)
 	return program
 }
 
-func (p *Parser) parseStatement() ast.Statement {
-	token := p.tokenizer.NextToken()
-	switch token.Type {
-	case tokenizer.TokenTypeLParen:
-		return p.parseSExp()
-	case tokenizer.TokenTypeIdentifier:
-		return p.parseLiteral()
-	case tokenizer.TokenTypeEOF:
-		return ast.Statement{}
-	}
-	panic(fmt.Sprintf("Unexpected token: %s", token.String()))
-}
+func (p *Parser) parseStatements(tokenReader *TokenReader) []ast.Statement {
+	statements := make([]ast.Statement, 0)
+	for !tokenReader.Done() {
+		sexp, ok := p.parseSExp(tokenReader)
+		if ok {
+			statements = append(statements, sexp)
+			tokenReader.Commit()
+			continue
+		} else {
+			tokenReader.Rollback()
+		}
 
-func (p *Parser) parseSExp() ast.Statement {
-	token := p.tokenizer.NextToken()
-	if token.Type == tokenizer.TokenTypeLParen {
-		return ast.Statement{
-			Type: ast.StatementTypeSExp,
-			SExp: &ast.SExp{
-				Identifier: token.Value,
-			},
+		literal, ok := p.parseLiteral(tokenReader)
+		if ok {
+			statements = append(statements, literal)
+			tokenReader.Commit()
+			continue
+		} else {
+			tokenReader.Rollback()
 		}
 	}
-	panic(fmt.Sprintf("Unexpected token: %s", token.String()))
+	return statements
 }
 
-func (p *Parser) parseLiteral() ast.Statement {
-	token := p.tokenizer.NextToken()
-	return ast.Statement{
-		Type: ast.StatementTypeLiteral,
-		Literal: &ast.Literal{
-			Type:  ast.LiteralTypeInteger,
-			Value: token.Value,
-		},
+func (p *Parser) parseSExp(tokenReader *TokenReader) (ast.Statement, bool) {
+	if tokenReader.NextToken().Type != tokenizer.TokenTypeLParen {
+		return ast.InvalidStatement{Message: "Expected '('"}, false
+	}
+	identifier := tokenReader.NextToken()
+	if identifier.Type != tokenizer.TokenTypeIdentifier && identifier.Type != tokenizer.TokenTypeOperator {
+		return ast.InvalidStatement{Message: "Expected identifier or operator"}, false
+	}
+	if tokenReader.NextToken().Type != tokenizer.TokenTypeRParen {
+		return ast.InvalidStatement{Message: "Expected ')'"}, false
+	}
+	return sexp.SExp{Identifier: identifier.Value}, true
+}
+
+func (p *Parser) parseLiteral(tokenReader *TokenReader) (ast.Statement, bool) {
+	token := tokenReader.NextToken()
+	switch token.Type {
+	case tokenizer.TokenTypeInteger:
+		value, err := strconv.ParseInt(token.Value, 10, 64)
+		if err != nil {
+			return ast.InvalidStatement{Message: "Invalid integer literal"}, false
+		}
+		return literal.Integer(int(value)), true
+	case tokenizer.TokenTypeFloat:
+		value, err := strconv.ParseFloat(token.Value, 64)
+		if err != nil {
+			return ast.InvalidStatement{Message: "Invalid float literal"}, false
+		}
+		return literal.Float(value), true
+	case tokenizer.TokenTypeString:
+		return literal.String(token.Value), true
+	default:
+		return ast.InvalidStatement{Message: "Expected integer, float, or string"}, false
 	}
 }

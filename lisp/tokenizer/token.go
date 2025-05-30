@@ -17,8 +17,6 @@ const (
 	tokenTypeWhitespace TokenType = "Whitespace"
 )
 
-var InvalidToken = Token{Type: TokenTypeInvalid, Value: ""}
-
 type Token struct {
 	Type  TokenType
 	Value string
