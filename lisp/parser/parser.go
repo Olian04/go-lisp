@@ -62,18 +62,20 @@ func (p *Parser) parseSExp(tokens []tokenizer.Token) (ast.Statement, []tokenizer
 	if tok.Type != tokenizer.TokenTypeLParen {
 		return nil, tokens
 	}
-	tok, remaining = nextToken(remaining)
-	if tok.Type != tokenizer.TokenTypeIdentifier && tok.Type != tokenizer.TokenTypeOperator {
+	identifier, remaining := nextToken(remaining)
+	if identifier.Type != tokenizer.TokenTypeIdentifier && identifier.Type != tokenizer.TokenTypeOperator {
 		return nil, tokens
 	}
 	arguments := make([]ast.Statement, 0)
 	for {
-		tok, remaining = nextToken(remaining)
+		tok = peekToken(remaining)
 		if tok.Type == tokenizer.TokenTypeRParen {
+			_, remaining = nextToken(remaining)
 			break
 		}
-		stmt, err := p.parseStatement(remaining)
-		if err != nil {
+		var stmt ast.Statement
+		stmt, remaining = p.parseStatement(remaining)
+		if stmt == nil {
 			return nil, tokens
 		}
 		arguments = append(arguments, stmt)
@@ -81,7 +83,7 @@ func (p *Parser) parseSExp(tokens []tokenizer.Token) (ast.Statement, []tokenizer
 	if tok.Type != tokenizer.TokenTypeRParen {
 		return nil, tokens
 	}
-	return ast.Function(tok.Value, arguments), remaining
+	return ast.Function(identifier.Value, arguments), remaining
 }
 
 func (p *Parser) parseLiteral(tokens []tokenizer.Token) (ast.Statement, []tokenizer.Token) {
@@ -111,4 +113,11 @@ func nextToken(tokens []tokenizer.Token) (tokenizer.Token, []tokenizer.Token) {
 		return tokenizer.EOF(), tokens
 	}
 	return tokens[0], tokens[1:]
+}
+
+func peekToken(tokens []tokenizer.Token) tokenizer.Token {
+	if len(tokens) == 0 {
+		return tokenizer.EOF()
+	}
+	return tokens[0]
 }

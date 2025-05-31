@@ -44,7 +44,7 @@ func TestParserHelloWorld(t *testing.T) {
 
 	util.AssertProgram(t, program, []ast.Statement{
 		ast.Function("print", []ast.Statement{
-			ast.String("Hello, World!"),
+			ast.String("\"Hello, World!\""),
 		}),
 	})
 }

@@ -24,12 +24,12 @@ func main() {
 			break
 		}
 		tok := tokenizer.New(input)
-		for token := tok.NextToken(); token.Type != tokenizer.TokenTypeEOF; token = tok.NextToken() {
+		tokens := tok.Array()
+		for _, token := range tokens {
 			fmt.Println(token.String())
 		}
-		tok = tokenizer.New(input) // reset the tokenizer
 		fmt.Println("--------------------------------")
-		parser := parser.New(tok.Array())
+		parser := parser.New(tokens)
 		program, err := parser.Parse()
 		if err != nil {
 			fmt.Println("Error parsing program:", err)
