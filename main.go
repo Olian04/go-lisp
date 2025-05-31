@@ -23,14 +23,12 @@ func main() {
 		if input == "exit" {
 			break
 		}
-		tok := tokenizer.New(input)
-		tokens := tok.Array()
+		tokens := tokenizer.New(input).Tokens()
 		for _, token := range tokens {
 			fmt.Println(token.String())
 		}
 		fmt.Println("--------------------------------")
-		parser := parser.New(tokens)
-		program, err := parser.Parse()
+		program, err := parser.New(tokens).Parse()
 		if err != nil {
 			fmt.Println("Error parsing program:", err)
 			continue

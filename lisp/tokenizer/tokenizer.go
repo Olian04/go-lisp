@@ -31,19 +31,19 @@ func New(source string) *Tokenizer {
 	}
 }
 
-func (t *Tokenizer) Array() []Token {
+func (t *Tokenizer) Tokens() []Token {
 	tokens := make([]Token, 0)
 	for {
-		token := t.NextToken()
+		token := t.nextToken()
+		tokens = append(tokens, token)
 		if token.Type == TokenTypeEOF {
 			break
 		}
-		tokens = append(tokens, token)
 	}
 	return tokens
 }
 
-func (t *Tokenizer) NextToken() Token {
+func (t *Tokenizer) nextToken() Token {
 	step := t.advance()
 	if step == InvalidToken {
 		return Invalid(fmt.Sprintf("invalid token: %s", step.token.String()))
@@ -54,7 +54,7 @@ func (t *Tokenizer) NextToken() Token {
 		return EOF()
 	}
 	if step.token.Type == tokenTypeWhitespace {
-		return t.NextToken()
+		return t.nextToken()
 	}
 	return step.token
 }

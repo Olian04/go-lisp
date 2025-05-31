@@ -24,6 +24,7 @@ func TestExpression(t *testing.T) {
 		tokenizer.Integer("1"),
 		tokenizer.Integer("2"),
 		tokenizer.RParen(),
+		tokenizer.EOF(),
 	})
 }
 
@@ -35,6 +36,7 @@ func TestHelloWorld(t *testing.T) {
 		tokenizer.Identifier("print"),
 		tokenizer.String("\"Hello, World!\""),
 		tokenizer.RParen(),
+		tokenizer.EOF(),
 	})
 }
 
@@ -56,6 +58,7 @@ func TestNestedExpressions(t *testing.T) {
 		tokenizer.Integer("2"),
 		tokenizer.RParen(),
 		tokenizer.RParen(),
+		tokenizer.EOF(),
 	})
 }
 
@@ -64,25 +67,30 @@ func TestTokenTypes(t *testing.T) {
 	tok := tokenizer.New("1.23")
 	util.AssertTokens(t, tok, []tokenizer.Token{
 		tokenizer.Float("1.23"),
+		tokenizer.EOF(),
 	})
 
 	tok = tokenizer.New("123")
 	util.AssertTokens(t, tok, []tokenizer.Token{
 		tokenizer.Integer("123"),
+		tokenizer.EOF(),
 	})
 
 	tok = tokenizer.New("\"1.23\"")
 	util.AssertTokens(t, tok, []tokenizer.Token{
 		tokenizer.String("\"1.23\""),
+		tokenizer.EOF(),
 	})
 
 	tok = tokenizer.New("hello")
 	util.AssertTokens(t, tok, []tokenizer.Token{
 		tokenizer.Identifier("hello"),
+		tokenizer.EOF(),
 	})
 
 	tok = tokenizer.New("+")
 	util.AssertTokens(t, tok, []tokenizer.Token{
 		tokenizer.Operator("+"),
+		tokenizer.EOF(),
 	})
 }
