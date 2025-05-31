@@ -7,10 +7,16 @@ import (
 	"github.com/Olian04/go-lisp/lisp/tokenizer"
 )
 
-func AssertNextToken(t *testing.T, tok *tokenizer.Tokenizer, token tokenizer.Token) {
+func assertNextToken(t *testing.T, tok *tokenizer.Tokenizer, token tokenizer.Token) {
 	actual := tok.NextToken()
 	if actual.Type != token.Type || actual.Value != token.Value {
 		t.Fatalf("Expected %s, got %s", token.String(), actual.String())
+	}
+}
+
+func AssertTokens(t *testing.T, tok *tokenizer.Tokenizer, tokens []tokenizer.Token) {
+	for _, token := range tokens {
+		assertNextToken(t, tok, token)
 	}
 }
 

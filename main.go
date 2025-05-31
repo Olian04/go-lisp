@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -24,14 +23,18 @@ func main() {
 		if input == "exit" {
 			break
 		}
-		tok := tokenizer.New(context.Background(), input)
+		tok := tokenizer.New(input)
 		for token := tok.NextToken(); token.Type != tokenizer.TokenTypeEOF; token = tok.NextToken() {
 			fmt.Println(token.String())
 		}
-		tok = tokenizer.New(context.Background(), input) // reset the tokenizer
+		tok = tokenizer.New(input) // reset the tokenizer
 		fmt.Println("--------------------------------")
-		parser := parser.New(context.Background(), tok)
-		program := parser.Parse()
+		parser := parser.New(tok.Array())
+		program, err := parser.Parse()
+		if err != nil {
+			fmt.Println("Error parsing program:", err)
+			continue
+		}
 		fmt.Println(program.String())
 	}
 }

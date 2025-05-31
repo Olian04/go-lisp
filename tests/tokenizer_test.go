@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"context"
 	"testing"
 
 	"github.com/Olian04/go-lisp/lisp/tokenizer"
@@ -10,65 +9,80 @@ import (
 
 func TestTokenizerEOF(t *testing.T) {
 	t.Parallel()
-	tok := tokenizer.New(context.Background(), "")
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeEOF})
+	tok := tokenizer.New("")
+	util.AssertTokens(t, tok, []tokenizer.Token{
+		tokenizer.EOF(),
+	})
 }
 
 func TestExpression(t *testing.T) {
 	t.Parallel()
-	tok := tokenizer.New(context.Background(), "(+ 1 2)")
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeLParen, Value: "("})
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeOperator, Value: "+"})
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeInteger, Value: "1"})
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeInteger, Value: "2"})
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeRParen, Value: ")"})
+	tok := tokenizer.New("(+ 1 2)")
+	util.AssertTokens(t, tok, []tokenizer.Token{
+		tokenizer.LParen(),
+		tokenizer.Operator("+"),
+		tokenizer.Integer("1"),
+		tokenizer.Integer("2"),
+		tokenizer.RParen(),
+	})
 }
 
 func TestHelloWorld(t *testing.T) {
 	t.Parallel()
-	tok := tokenizer.New(context.Background(), "(print \"Hello, World!\")")
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeLParen, Value: "("})
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeIdentifier, Value: "print"})
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeString, Value: "\"Hello, World!\""})
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeRParen, Value: ")"})
+	tok := tokenizer.New("(print \"Hello, World!\")")
+	util.AssertTokens(t, tok, []tokenizer.Token{
+		tokenizer.LParen(),
+		tokenizer.Identifier("print"),
+		tokenizer.String("\"Hello, World!\""),
+		tokenizer.RParen(),
+	})
 }
 
 func TestNestedExpressions(t *testing.T) {
 	t.Parallel()
-	tok := tokenizer.New(context.Background(), "(print (+ 1 2 3) (/ 1 2))")
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeLParen, Value: "("})
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeIdentifier, Value: "print"})
-
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeLParen, Value: "("})
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeOperator, Value: "+"})
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeInteger, Value: "1"})
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeInteger, Value: "2"})
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeInteger, Value: "3"})
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeRParen, Value: ")"})
-
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeLParen, Value: "("})
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeOperator, Value: "/"})
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeInteger, Value: "1"})
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeInteger, Value: "2"})
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeRParen, Value: ")"})
-
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeRParen, Value: ")"})
+	tok := tokenizer.New("(print (+ 1 2 3) (/ 1 2))")
+	util.AssertTokens(t, tok, []tokenizer.Token{
+		tokenizer.LParen(),
+		tokenizer.Identifier("print"),
+		tokenizer.LParen(),
+		tokenizer.Operator("+"),
+		tokenizer.Integer("1"),
+		tokenizer.Integer("2"),
+		tokenizer.Integer("3"),
+		tokenizer.RParen(),
+		tokenizer.LParen(),
+		tokenizer.Operator("/"),
+		tokenizer.Integer("1"),
+		tokenizer.Integer("2"),
+		tokenizer.RParen(),
+		tokenizer.RParen(),
+	})
 }
 
 func TestTokenTypes(t *testing.T) {
 	t.Parallel()
-	tok := tokenizer.New(context.Background(), "1.23")
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeFloat, Value: "1.23"})
+	tok := tokenizer.New("1.23")
+	util.AssertTokens(t, tok, []tokenizer.Token{
+		tokenizer.Float("1.23"),
+	})
 
-	tok = tokenizer.New(context.Background(), "123")
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeInteger, Value: "123"})
+	tok = tokenizer.New("123")
+	util.AssertTokens(t, tok, []tokenizer.Token{
+		tokenizer.Integer("123"),
+	})
 
-	tok = tokenizer.New(context.Background(), "\"1.23\"")
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeString, Value: "\"1.23\""})
+	tok = tokenizer.New("\"1.23\"")
+	util.AssertTokens(t, tok, []tokenizer.Token{
+		tokenizer.String("\"1.23\""),
+	})
 
-	tok = tokenizer.New(context.Background(), "hello")
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeIdentifier, Value: "hello"})
+	tok = tokenizer.New("hello")
+	util.AssertTokens(t, tok, []tokenizer.Token{
+		tokenizer.Identifier("hello"),
+	})
 
-	tok = tokenizer.New(context.Background(), "+")
-	util.AssertNextToken(t, tok, tokenizer.Token{Type: tokenizer.TokenTypeOperator, Value: "+"})
+	tok = tokenizer.New("+")
+	util.AssertTokens(t, tok, []tokenizer.Token{
+		tokenizer.Operator("+"),
+	})
 }

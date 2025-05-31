@@ -47,3 +47,43 @@ func (t Token) String() string {
 	}
 	return fmt.Sprintf("(Unknown %s)", t.Value)
 }
+
+func Integer(value string) Token {
+	return Token{Type: TokenTypeInteger, Value: value}
+}
+
+func Float(value string) Token {
+	return Token{Type: TokenTypeFloat, Value: value}
+}
+
+func String(value string) Token {
+	return Token{Type: TokenTypeString, Value: value}
+}
+
+func Identifier(value string) Token {
+	return Token{Type: TokenTypeIdentifier, Value: value}
+}
+
+func Operator(value string) Token {
+	return Token{Type: TokenTypeOperator, Value: value}
+}
+
+func LParen() Token {
+	return Token{Type: TokenTypeLParen, Value: "("}
+}
+
+func RParen() Token {
+	return Token{Type: TokenTypeRParen, Value: ")"}
+}
+
+func EOF() Token {
+	return Token{Type: TokenTypeEOF}
+}
+
+func Invalid(value string) Token {
+	return Token{Type: TokenTypeInvalid, Value: value}
+}
+
+func Whitespace(value string) Token {
+	return Token{Type: tokenTypeWhitespace, Value: value}
+}

@@ -1,7 +1,6 @@
 package tokenizer
 
 import (
-	"context"
 	"fmt"
 )
 
@@ -25,22 +24,34 @@ var NoToken = tokenizerStep{
 	next:  0,
 }
 
-func New(ctx context.Context, source string) *Tokenizer {
+func New(source string) *Tokenizer {
 	return &Tokenizer{
 		source:    source,
 		readerPos: 0,
 	}
 }
 
+func (t *Tokenizer) Array() []Token {
+	tokens := make([]Token, 0)
+	for {
+		token := t.NextToken()
+		if token.Type == TokenTypeEOF {
+			break
+		}
+		tokens = append(tokens, token)
+	}
+	return tokens
+}
+
 func (t *Tokenizer) NextToken() Token {
 	step := t.advance()
 	if step == InvalidToken {
-		return Token{Type: TokenTypeInvalid, Value: fmt.Sprintf("invalid token: %s", step.token.String())}
+		return Invalid(fmt.Sprintf("invalid token: %s", step.token.String()))
 	}
 
 	t.readerPos = step.next
 	if step.token.Type == TokenTypeEOF {
-		return Token{Type: TokenTypeEOF}
+		return EOF()
 	}
 	if step.token.Type == tokenTypeWhitespace {
 		return t.NextToken()
@@ -90,19 +101,13 @@ func (t *Tokenizer) advance() tokenizerStep {
 func (t *Tokenizer) readSyntax() tokenizerStep {
 	if t.peek(0) == '(' {
 		return tokenizerStep{
-			token: Token{
-				Type:  TokenTypeLParen,
-				Value: t.read(1),
-			},
-			next: t.readerPos + 1,
+			token: LParen(),
+			next:  t.readerPos + 1,
 		}
 	} else if t.peek(0) == ')' {
 		return tokenizerStep{
-			token: Token{
-				Type:  TokenTypeRParen,
-				Value: t.read(1),
-			},
-			next: t.readerPos + 1,
+			token: RParen(),
+			next:  t.readerPos + 1,
 		}
 	}
 	return NoToken
@@ -115,19 +120,13 @@ func (t *Tokenizer) readNumber() tokenizerStep {
 			number += 1
 			number += t.lookahead(number, isNumberChar)
 			return tokenizerStep{
-				token: Token{
-					Type:  TokenTypeFloat,
-					Value: t.read(number),
-				},
-				next: t.readerPos + number,
+				token: Float(t.read(number)),
+				next:  t.readerPos + number,
 			}
 		}
 		return tokenizerStep{
-			token: Token{
-				Type:  TokenTypeInteger,
-				Value: t.read(number),
-			},
-			next: t.readerPos + number,
+			token: Integer(t.read(number)),
+			next:  t.readerPos + number,
 		}
 	}
 	return NoToken
@@ -143,11 +142,8 @@ func (t *Tokenizer) readString() tokenizerStep {
 		if t.peek(str) == '"' {
 			str += 1
 			return tokenizerStep{
-				token: Token{
-					Type:  TokenTypeString,
-					Value: t.read(str),
-				},
-				next: t.readerPos + str,
+				token: String(t.read(str)),
+				next:  t.readerPos + str,
 			}
 		}
 	}
@@ -161,11 +157,8 @@ func (t *Tokenizer) readIdentifier() tokenizerStep {
 		})
 		if identifier > 0 {
 			return tokenizerStep{
-				token: Token{
-					Type:  TokenTypeIdentifier,
-					Value: t.read(identifier + 1),
-				},
-				next: t.readerPos + identifier + 1,
+				token: Identifier(t.read(identifier + 1)),
+				next:  t.readerPos + identifier + 1,
 			}
 		}
 	}
@@ -175,11 +168,8 @@ func (t *Tokenizer) readIdentifier() tokenizerStep {
 func (t *Tokenizer) readOperator() tokenizerStep {
 	if isOperatorChar(t.peek(0)) {
 		return tokenizerStep{
-			token: Token{
-				Type:  TokenTypeOperator,
-				Value: t.read(1),
-			},
-			next: t.readerPos + 1,
+			token: Operator(t.read(1)),
+			next:  t.readerPos + 1,
 		}
 	}
 	return NoToken
@@ -189,11 +179,8 @@ func (t *Tokenizer) readWhitespace() tokenizerStep {
 	whitespace := t.lookahead(0, isWhitespaceChar)
 	if whitespace > 0 {
 		return tokenizerStep{
-			token: Token{
-				Type:  tokenTypeWhitespace,
-				Value: t.read(whitespace),
-			},
-			next: t.readerPos + whitespace,
+			token: Whitespace(t.read(whitespace)),
+			next:  t.readerPos + whitespace,
 		}
 	}
 	return NoToken

@@ -1,106 +1,114 @@
 package parser
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 
 	"github.com/Olian04/go-lisp/lisp/ast"
-	"github.com/Olian04/go-lisp/lisp/ast/literal"
-	"github.com/Olian04/go-lisp/lisp/ast/sexp"
 	"github.com/Olian04/go-lisp/lisp/tokenizer"
 )
 
 type Parser struct {
-	tokenizer *tokenizer.Tokenizer
+	tokens []tokenizer.Token
 }
 
-func New(ctx context.Context, tokenizer *tokenizer.Tokenizer) *Parser {
-	return &Parser{tokenizer: tokenizer}
+func New(tokens []tokenizer.Token) *Parser {
+	return &Parser{tokens: tokens}
 }
 
-func (p *Parser) Parse() (ast.Program, bool) {
-	program := ast.Program{}
-	tokenReader := NewTokenReader(p.tokenizer)
-	statements, ok := p.parseStatements(tokenReader)
-	program.Statements = statements
-	if !ok {
-		return program, false
+func (p *Parser) Parse() (ast.Program, error) {
+	statements, remaining := p.parseStatements(p.tokens)
+	if len(remaining) > 0 {
+		return ast.Program{}, fmt.Errorf("unexpected tokens after end of program: %v", remaining)
 	}
-	return program, true
+	return ast.Program{
+		Statements: statements,
+	}, nil
 }
 
-func (p *Parser) parseStatements(tokenReader *TokenReader) ([]ast.Statement, bool) {
+func (p *Parser) parseStatements(tokens []tokenizer.Token) ([]ast.Statement, []tokenizer.Token) {
 	statements := make([]ast.Statement, 0)
-	for !tokenReader.Done() {
-		stmt := p.parseStatement(tokenReader)
-		statements = append(statements, stmt)
-		if stmt.Kind() == ast.StatementKindInvalid {
-			return statements, false
+	remaining := tokens
+	maxIterations := len(tokens) * 1000
+	for len(remaining) > 0 {
+		var stmt ast.Statement
+		stmt, remaining = p.parseStatement(remaining)
+		if stmt != nil {
+			statements = append(statements, stmt)
 		}
+		if maxIterations == 0 {
+			panic("Reached max iterations, possible infinite loop")
+		}
+		maxIterations--
 	}
-	return statements, true
+	return statements, remaining
 }
 
-func (p *Parser) parseStatement(tokenReader *TokenReader) ast.Statement {
-	sexp, ok := p.parseSExp(tokenReader)
-	if ok {
-		tokenReader.Commit()
-		return sexp
-	} else {
-		tokenReader.Rollback()
+func (p *Parser) parseStatement(tokens []tokenizer.Token) (ast.Statement, []tokenizer.Token) {
+	sexp, remaining := p.parseSExp(tokens)
+	if sexp != nil {
+		return sexp, remaining
 	}
 
-	literal, ok := p.parseLiteral(tokenReader)
-	if ok {
-		tokenReader.Commit()
-		return literal
-	} else {
-		tokenReader.Rollback()
+	literal, remaining := p.parseLiteral(tokens)
+	if literal != nil {
+		return literal, remaining
 	}
-	return ast.InvalidStatement{Message: "Expected statement"}
+	return nil, remaining
 }
 
-func (p *Parser) parseSExp(tokenReader *TokenReader) (ast.Statement, bool) {
-	if tok := tokenReader.NextToken(); tok.Type != tokenizer.TokenTypeLParen {
-		return ast.InvalidStatement{Message: fmt.Sprintf("Expected '(' but got %s", tok.String())}, false
+func (p *Parser) parseSExp(tokens []tokenizer.Token) (ast.Statement, []tokenizer.Token) {
+	tok, remaining := nextToken(tokens)
+	if tok.Type != tokenizer.TokenTypeLParen {
+		return nil, tokens
 	}
-	identifier := tokenReader.NextToken()
-	if identifier.Type != tokenizer.TokenTypeIdentifier && identifier.Type != tokenizer.TokenTypeOperator {
-		return ast.InvalidStatement{Message: fmt.Sprintf("Expected identifier or operator but got %s", identifier.String())}, false
+	tok, remaining = nextToken(remaining)
+	if tok.Type != tokenizer.TokenTypeIdentifier && tok.Type != tokenizer.TokenTypeOperator {
+		return nil, tokens
 	}
 	arguments := make([]ast.Statement, 0)
 	for {
-		tok := tokenReader.NextToken()
+		tok, remaining = nextToken(remaining)
 		if tok.Type == tokenizer.TokenTypeRParen {
 			break
 		}
-		arguments = append(arguments, p.parseStatement(tokenReader))
+		stmt, err := p.parseStatement(remaining)
+		if err != nil {
+			return nil, tokens
+		}
+		arguments = append(arguments, stmt)
 	}
-	if tok := tokenReader.NextToken(); tok.Type != tokenizer.TokenTypeRParen {
-		return ast.InvalidStatement{Message: fmt.Sprintf("Expected ')' but got %s", tok.String())}, false
+	if tok.Type != tokenizer.TokenTypeRParen {
+		return nil, tokens
 	}
-	return sexp.SExp{Identifier: identifier.Value, Arguments: arguments}, true
+	return ast.Function(tok.Value, arguments), remaining
 }
 
-func (p *Parser) parseLiteral(tokenReader *TokenReader) (ast.Statement, bool) {
-	token := tokenReader.NextToken()
-	switch token.Type {
+func (p *Parser) parseLiteral(tokens []tokenizer.Token) (ast.Statement, []tokenizer.Token) {
+	tok, remaining := nextToken(tokens)
+	switch tok.Type {
 	case tokenizer.TokenTypeInteger:
-		value, err := strconv.ParseInt(token.Value, 10, 64)
+		value, err := strconv.ParseInt(tok.Value, 10, 64)
 		if err != nil {
-			return ast.InvalidStatement{Message: "Invalid integer literal"}, false
+			return nil, tokens
 		}
-		return literal.Integer(int(value)), true
+		return ast.Integer(int(value)), remaining
 	case tokenizer.TokenTypeFloat:
-		value, err := strconv.ParseFloat(token.Value, 64)
+		value, err := strconv.ParseFloat(tok.Value, 64)
 		if err != nil {
-			return ast.InvalidStatement{Message: "Invalid float literal"}, false
+			return nil, tokens
 		}
-		return literal.Float(value), true
+		return ast.Float(value), remaining
 	case tokenizer.TokenTypeString:
-		return literal.String(token.Value), true
+		return ast.String(tok.Value), remaining
 	default:
-		return ast.InvalidStatement{Message: "Expected integer, float, or string"}, false
+		return nil, tokens
 	}
+}
+
+func nextToken(tokens []tokenizer.Token) (tokenizer.Token, []tokenizer.Token) {
+	if len(tokens) == 0 {
+		return tokenizer.EOF(), tokens
+	}
+	return tokens[0], tokens[1:]
 }
