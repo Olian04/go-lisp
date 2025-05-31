@@ -15,7 +15,10 @@ func TestParserSimpleExpression(t *testing.T) {
 	t.Parallel()
 	tok := tokenizer.New(t.Context(), "(+ 1 2)")
 	parser := parser.New(t.Context(), tok)
-	program := parser.Parse()
+	program, ok := parser.Parse()
+	if !ok {
+		t.Fatal("Expected program")
+	}
 	util.AssertProgram(t, program, []ast.Statement{
 		sexp.Operator("+", []ast.Statement{
 			literal.Integer(1),
@@ -28,7 +31,10 @@ func TestParserHelloWorld(t *testing.T) {
 	t.Parallel()
 	tok := tokenizer.New(t.Context(), "(print \"Hello, World!\")")
 	parser := parser.New(t.Context(), tok)
-	program := parser.Parse()
+	program, ok := parser.Parse()
+	if !ok {
+		t.Fatal("Expected program")
+	}
 	util.AssertProgram(t, program, []ast.Statement{
 		sexp.Function("print", []ast.Statement{
 			literal.String("Hello, World!"),
@@ -40,7 +46,10 @@ func TestParserNestedExpressions(t *testing.T) {
 	t.Parallel()
 	tok := tokenizer.New(t.Context(), "(print (+ 1 2 3) (/ 1 2))")
 	parser := parser.New(t.Context(), tok)
-	program := parser.Parse()
+	program, ok := parser.Parse()
+	if !ok {
+		t.Fatal("Expected program")
+	}
 	util.AssertProgram(t, program, []ast.Statement{
 		sexp.Function("print", []ast.Statement{
 			sexp.Function("+", []ast.Statement{
