@@ -99,12 +99,12 @@ func (t *Tokenizer) advance() tokenizerStep {
 }
 
 func (t *Tokenizer) readSyntax() tokenizerStep {
-	if t.peek(0) == '(' {
+	if isLeftParenChar(t.peek(0)) {
 		return tokenizerStep{
 			token: LParen(),
 			next:  t.readerPos + 1,
 		}
-	} else if t.peek(0) == ')' {
+	} else if isRightParenChar(t.peek(0)) {
 		return tokenizerStep{
 			token: RParen(),
 			next:  t.readerPos + 1,
@@ -114,11 +114,11 @@ func (t *Tokenizer) readSyntax() tokenizerStep {
 }
 
 func (t *Tokenizer) readNumber() tokenizerStep {
-	number := t.lookahead(0, isNumberChar)
+	number := t.lookaheadWhile(0, isNumberChar)
 	if number > 0 {
-		if t.peek(number) == '.' {
+		if isAccessChar(t.peek(number)) {
 			number += 1
-			number += t.lookahead(number, isNumberChar)
+			number += t.lookaheadWhile(number, isNumberChar)
 			return tokenizerStep{
 				token: Float(t.read(number)),
 				next:  t.readerPos + number,
@@ -133,17 +133,15 @@ func (t *Tokenizer) readNumber() tokenizerStep {
 }
 
 func (t *Tokenizer) readString() tokenizerStep {
-	if t.peek(0) == '"' {
-		str := t.lookahead(1, func(r rune) bool {
-			return r != '"'
-		})
-		str += 1
+	if isQuoteChar(t.peek(0)) {
+		offset := 1
+		offset += t.lookaheadUntil(1, isQuoteChar)
 
-		if t.peek(str) == '"' {
-			str += 1
+		if isQuoteChar(t.peek(offset)) {
+			offset += 1
 			return tokenizerStep{
-				token: String(t.read(str)),
-				next:  t.readerPos + str,
+				token: String(t.read(offset)),
+				next:  t.readerPos + offset,
 			}
 		}
 	}
@@ -151,14 +149,12 @@ func (t *Tokenizer) readString() tokenizerStep {
 }
 
 func (t *Tokenizer) readIdentifier() tokenizerStep {
-	if isIdentifierChar(t.peek(0), true) {
-		identifier := t.lookahead(1, func(r rune) bool {
-			return isIdentifierChar(r, false)
-		})
-		if identifier > 0 {
+	if isAlphaChar(t.peek(0)) {
+		offset := t.lookaheadWhile(1, isIdentifierChar)
+		if offset > 0 {
 			return tokenizerStep{
-				token: Identifier(t.read(identifier + 1)),
-				next:  t.readerPos + identifier + 1,
+				token: Identifier(t.read(offset + 1)),
+				next:  t.readerPos + offset + 1,
 			}
 		}
 	}
@@ -176,19 +172,27 @@ func (t *Tokenizer) readOperator() tokenizerStep {
 }
 
 func (t *Tokenizer) readWhitespace() tokenizerStep {
-	whitespace := t.lookahead(0, isWhitespaceChar)
-	if whitespace > 0 {
+	offset := t.lookaheadWhile(0, isWhitespaceChar)
+	if offset > 0 {
 		return tokenizerStep{
-			token: Whitespace(t.read(whitespace)),
-			next:  t.readerPos + whitespace,
+			token: Whitespace(t.read(offset)),
+			next:  t.readerPos + offset,
 		}
 	}
 	return NoToken
 }
 
-func (t *Tokenizer) lookahead(offset int, predicate func(r rune) bool) int {
+func (t *Tokenizer) lookaheadWhile(offset int, predicate func(r rune) bool) int {
 	i := 0
 	for predicate(t.peek(offset + i)) {
+		i++
+	}
+	return i
+}
+
+func (t *Tokenizer) lookaheadUntil(offset int, predicate func(r rune) bool) int {
+	i := 0
+	for !predicate(t.peek(offset + i)) {
 		i++
 	}
 	return i
@@ -198,11 +202,48 @@ func isWhitespaceChar(r rune) bool {
 	return r == ' ' || r == '\t' || r == '\n' || r == '\r'
 }
 
-func isIdentifierChar(r rune, isFirst bool) bool {
-	if isFirst {
-		return r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z'
-	}
-	return r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9'
+func isIdentifierChar(r rune) bool {
+	return isAlphaChar(r) || isNumberChar(r) || isSeparatorChar(r)
+}
+
+func isQuoteChar(r rune) bool {
+	return r == '"'
+}
+
+func isLeftParenChar(r rune) bool {
+	return r == '('
+}
+
+func isRightParenChar(r rune) bool {
+	return r == ')'
+}
+
+func isLeftBraceChar(r rune) bool {
+	return r == '{'
+}
+
+func isRightBraceChar(r rune) bool {
+	return r == '}'
+}
+
+func isLeftBracketChar(r rune) bool {
+	return r == '['
+}
+
+func isRightBracketChar(r rune) bool {
+	return r == ']'
+}
+
+func isAccessChar(r rune) bool {
+	return r == '.'
+}
+
+func isSeparatorChar(r rune) bool {
+	return r == '_'
+}
+
+func isAlphaChar(r rune) bool {
+	return r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z'
 }
 
 func isNumberChar(r rune) bool {
