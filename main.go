@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/Olian04/go-lisp/lisp/evaluator"
+	"github.com/Olian04/go-lisp/lisp/evaluator/context"
 	"github.com/Olian04/go-lisp/lisp/parser"
 	"github.com/Olian04/go-lisp/lisp/tokenizer"
 )
@@ -23,20 +25,23 @@ func main() {
 		if input == "exit" {
 			break
 		}
+
 		tokens, err := tokenizer.Tokenize(input)
 		if err != nil {
 			fmt.Println("Error tokenizing input:", err)
 			continue
 		}
-		for _, token := range tokens {
-			fmt.Println(token.String())
-		}
-		fmt.Println("--------------------------------")
 		program, err := parser.Parse(tokens)
 		if err != nil {
 			fmt.Println("Error parsing program:", err)
 			continue
 		}
-		fmt.Println(program.String())
+
+		err = evaluator.Evaluate(program, context.EvaluatorContext{
+			StdOut: os.Stdout,
+		})
+		if err != nil {
+			fmt.Println("Error evaluating program:", err)
+		}
 	}
 }

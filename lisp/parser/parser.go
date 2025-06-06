@@ -13,9 +13,7 @@ func Parse(tokens []tokenizer.Token) (ast.Program, error) {
 	if len(remaining) > 0 {
 		return ast.Program{}, fmt.Errorf("unexpected tokens after end of program: %v", remaining)
 	}
-	return ast.Program{
-		Statements: statements,
-	}, nil
+	return statements, nil
 }
 
 func parseStatements(tokens []tokenizer.Token) ([]ast.Statement, []tokenizer.Token) {

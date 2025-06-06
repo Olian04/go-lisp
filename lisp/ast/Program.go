@@ -4,13 +4,11 @@ import (
 	"strings"
 )
 
-type Program struct {
-	Statements []Statement
-}
+type Program []Statement
 
-func (p *Program) String() string {
-	statements := make([]string, len(p.Statements))
-	for i, statement := range p.Statements {
+func (p Program) String() string {
+	statements := make([]string, len(p))
+	for i, statement := range p {
 		statements[i] = statement.String()
 	}
 	return strings.Join(statements, "\n")

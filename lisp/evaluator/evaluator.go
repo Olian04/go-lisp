@@ -1,15 +1,56 @@
 package evaluator
 
-import "github.com/Olian04/go-lisp/lisp/ast"
+import (
+	"fmt"
 
-type Evaluator struct {
-	program *ast.Program
+	"github.com/Olian04/go-lisp/lisp/ast"
+	"github.com/Olian04/go-lisp/lisp/evaluator/builtins"
+	"github.com/Olian04/go-lisp/lisp/evaluator/context"
+)
+
+type evaluatorState struct {
+	statements []ast.Statement
+	context    context.EvaluatorContext
 }
 
-func New(program *ast.Program) *Evaluator {
-	return &Evaluator{program: program}
+func Evaluate(statements []ast.Statement, context context.EvaluatorContext) error {
+	state := evaluatorState{
+		statements: statements,
+		context:    context,
+	}
+
+	for _, statement := range state.statements {
+		var err error
+		state, err = evaluateStatement(state, statement)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
-func (e *Evaluator) Evaluate() (any, error) {
-	return nil, nil
+func evaluateStatement(state evaluatorState, statement ast.Statement) (evaluatorState, error) {
+	switch statement := statement.(type) {
+	case ast.Expression:
+		return evaluateExpression(state, statement)
+	case ast.Literal:
+		return evaluateLiteral(state, statement)
+	default:
+		return state, fmt.Errorf("unknown statement type: %T", statement)
+	}
+}
+
+func evaluateExpression(state evaluatorState, expression ast.Expression) (evaluatorState, error) {
+	switch expression.Identifier {
+	case "print":
+		builtins.Print(expression.Arguments, state.context)
+		return state, nil
+	default:
+		return state, fmt.Errorf("unknown expression: %s", expression.Identifier)
+	}
+}
+
+func evaluateLiteral(state evaluatorState, literal ast.Literal) (evaluatorState, error) {
+	return state, nil
 }

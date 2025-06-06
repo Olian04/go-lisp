@@ -18,10 +18,6 @@ type Literal struct {
 	Value   any
 }
 
-func (l Literal) Kind() StatementKind {
-	return StatementKindLiteral
-}
-
 func (l Literal) String() string {
 	switch l.Variant {
 	case LiteralVariantInteger:
@@ -29,7 +25,7 @@ func (l Literal) String() string {
 	case LiteralVariantFloat:
 		return fmt.Sprintf("%f", l.Value)
 	case LiteralVariantString:
-		return fmt.Sprintf("\"%s\"", l.Value)
+		return fmt.Sprintf("%s", l.Value)
 	case LiteralVariantBoolean:
 		return fmt.Sprintf("%t", l.Value)
 	default:

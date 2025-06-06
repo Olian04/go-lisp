@@ -154,13 +154,13 @@ func (a assertBuilder) Tokens(expected []tokenizer.Token) assertBuilder {
 	return a
 }
 
-func (a assertBuilder) Program(expected []ast.Statement) assertBuilder {
+func (a assertBuilder) Program(expected ast.Program) assertBuilder {
 	a.tb.Helper()
 	actual := a.value.(ast.Program)
-	if len(actual.Statements) != len(expected) {
-		a.tb.Fatalf("Expected %d statements, got %d", len(expected), len(actual.Statements))
+	if len(actual) != len(expected) {
+		a.tb.Fatalf("Expected %d statements, got %d", len(expected), len(actual))
 	}
-	for i, statement := range actual.Statements {
+	for i, statement := range actual {
 		if statement.String() != expected[i].String() {
 			a.tb.Fatalf("Expected %s, got %s", expected[i].String(), statement.String())
 		}
