@@ -3,27 +3,26 @@ package tests
 import (
 	"testing"
 
-	"github.com/Olian04/go-lisp/lisp/ast"
+	internalAst "github.com/Olian04/go-lisp/lisp/ast"
 	"github.com/Olian04/go-lisp/lisp/parser"
 	"github.com/Olian04/go-lisp/lisp/tokenizer"
 	"github.com/Olian04/go-lisp/tests/util"
+	"github.com/Olian04/go-lisp/tests/util/ast"
+	"github.com/Olian04/go-lisp/tests/util/tokens"
 )
 
 func TestParserSimpleExpression(t *testing.T) {
 	t.Parallel()
-	program, err := parser.New([]tokenizer.Token{
-		tokenizer.LParen(),
-		tokenizer.Operator("+"),
-		tokenizer.Integer("1"),
-		tokenizer.Integer("2"),
-		tokenizer.RParen(),
-	}).Parse()
-	if err != nil {
-		t.Fatalf("Expected program, got error: %s", err)
-	}
-
-	util.AssertProgram(t, program, []ast.Statement{
-		ast.Operator("+", []ast.Statement{
+	program, err := parser.Parse([]tokenizer.Token{
+		tokens.LParen(),
+		tokens.Identifier("+"),
+		tokens.Integer("1"),
+		tokens.Integer("2"),
+		tokens.RParen(),
+	})
+	util.Assert(t, err).NotError()
+	util.Assert(t, program).Program([]internalAst.Statement{
+		ast.Expression("+", []internalAst.Statement{
 			ast.Integer(1),
 			ast.Integer(2),
 		}),
@@ -32,18 +31,15 @@ func TestParserSimpleExpression(t *testing.T) {
 
 func TestParserHelloWorld(t *testing.T) {
 	t.Parallel()
-	program, err := parser.New([]tokenizer.Token{
-		tokenizer.LParen(),
-		tokenizer.Identifier("print"),
-		tokenizer.String("\"Hello, World!\""),
-		tokenizer.RParen(),
-	}).Parse()
-	if err != nil {
-		t.Fatalf("Expected program, got error: %s", err)
-	}
-
-	util.AssertProgram(t, program, []ast.Statement{
-		ast.Function("print", []ast.Statement{
+	program, err := parser.Parse([]tokenizer.Token{
+		tokens.LParen(),
+		tokens.Identifier("print"),
+		tokens.String("\"Hello, World!\""),
+		tokens.RParen(),
+	})
+	util.Assert(t, err).NotError()
+	util.Assert(t, program).Program([]internalAst.Statement{
+		ast.Expression("print", []internalAst.Statement{
 			ast.String("\"Hello, World!\""),
 		}),
 	})
@@ -51,34 +47,31 @@ func TestParserHelloWorld(t *testing.T) {
 
 func TestParserNestedExpressions(t *testing.T) {
 	t.Parallel()
-	program, err := parser.New([]tokenizer.Token{
-		tokenizer.LParen(),
-		tokenizer.Identifier("print"),
-		tokenizer.LParen(),
-		tokenizer.Operator("+"),
-		tokenizer.Integer("1"),
-		tokenizer.Integer("2"),
-		tokenizer.Integer("3"),
-		tokenizer.RParen(),
-		tokenizer.LParen(),
-		tokenizer.Operator("/"),
-		tokenizer.Integer("1"),
-		tokenizer.Integer("2"),
-		tokenizer.RParen(),
-		tokenizer.RParen(),
-	}).Parse()
-	if err != nil {
-		t.Fatalf("Expected program, got error: %s", err)
-	}
-
-	util.AssertProgram(t, program, []ast.Statement{
-		ast.Function("print", []ast.Statement{
-			ast.Function("+", []ast.Statement{
+	program, err := parser.Parse([]tokenizer.Token{
+		tokens.LParen(),
+		tokens.Identifier("print"),
+		tokens.LParen(),
+		tokens.Identifier("+"),
+		tokens.Integer("1"),
+		tokens.Integer("2"),
+		tokens.Integer("3"),
+		tokens.RParen(),
+		tokens.LParen(),
+		tokens.Identifier("/"),
+		tokens.Integer("1"),
+		tokens.Integer("2"),
+		tokens.RParen(),
+		tokens.RParen(),
+	})
+	util.Assert(t, err).NotError()
+	util.Assert(t, program).Program([]internalAst.Statement{
+		ast.Expression("print", []internalAst.Statement{
+			ast.Expression("+", []internalAst.Statement{
 				ast.Integer(1),
 				ast.Integer(2),
 				ast.Integer(3),
 			}),
-			ast.Function("/", []ast.Statement{
+			ast.Expression("/", []internalAst.Statement{
 				ast.Integer(1),
 				ast.Integer(2),
 			}),

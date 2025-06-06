@@ -5,92 +5,102 @@ import (
 
 	"github.com/Olian04/go-lisp/lisp/tokenizer"
 	"github.com/Olian04/go-lisp/tests/util"
+	"github.com/Olian04/go-lisp/tests/util/tokens"
 )
 
 func TestTokenizerEOF(t *testing.T) {
 	t.Parallel()
-	tok := tokenizer.New("")
-	util.AssertTokens(t, tok, []tokenizer.Token{
-		tokenizer.EOF(),
+	tok, err := tokenizer.Tokenize("")
+	util.Assert(t, err).NotError()
+	util.Assert(t, tok).Tokens([]tokenizer.Token{
+		tokens.EOF(),
 	})
 }
 
 func TestExpression(t *testing.T) {
 	t.Parallel()
-	tok := tokenizer.New("(+ 1 2)")
-	util.AssertTokens(t, tok, []tokenizer.Token{
-		tokenizer.LParen(),
-		tokenizer.Operator("+"),
-		tokenizer.Integer("1"),
-		tokenizer.Integer("2"),
-		tokenizer.RParen(),
-		tokenizer.EOF(),
+	tok, err := tokenizer.Tokenize("(+ 1 2)")
+	util.Assert(t, err).NotError()
+	util.Assert(t, tok).Tokens([]tokenizer.Token{
+		tokens.LParen(),
+		tokens.Identifier("+"),
+		tokens.Integer("1"),
+		tokens.Integer("2"),
+		tokens.RParen(),
+		tokens.EOF(),
 	})
 }
 
 func TestHelloWorld(t *testing.T) {
 	t.Parallel()
-	tok := tokenizer.New("(print \"Hello, World!\")")
-	util.AssertTokens(t, tok, []tokenizer.Token{
-		tokenizer.LParen(),
-		tokenizer.Identifier("print"),
-		tokenizer.String("\"Hello, World!\""),
-		tokenizer.RParen(),
-		tokenizer.EOF(),
+	tok, err := tokenizer.Tokenize("(print \"Hello, World!\")")
+	util.Assert(t, err).NotError()
+	util.Assert(t, tok).Tokens([]tokenizer.Token{
+		tokens.LParen(),
+		tokens.Identifier("print"),
+		tokens.String("\"Hello, World!\""),
+		tokens.RParen(),
+		tokens.EOF(),
 	})
 }
 
 func TestNestedExpressions(t *testing.T) {
 	t.Parallel()
-	tok := tokenizer.New("(print (+ 1 2 3) (/ 1 2))")
-	util.AssertTokens(t, tok, []tokenizer.Token{
-		tokenizer.LParen(),
-		tokenizer.Identifier("print"),
-		tokenizer.LParen(),
-		tokenizer.Operator("+"),
-		tokenizer.Integer("1"),
-		tokenizer.Integer("2"),
-		tokenizer.Integer("3"),
-		tokenizer.RParen(),
-		tokenizer.LParen(),
-		tokenizer.Operator("/"),
-		tokenizer.Integer("1"),
-		tokenizer.Integer("2"),
-		tokenizer.RParen(),
-		tokenizer.RParen(),
-		tokenizer.EOF(),
+	tok, err := tokenizer.Tokenize("(print (+ 1 2 3) (/ 1 2))")
+	util.Assert(t, err).NotError()
+	util.Assert(t, tok).Tokens([]tokenizer.Token{
+		tokens.LParen(),
+		tokens.Identifier("print"),
+		tokens.LParen(),
+		tokens.Identifier("+"),
+		tokens.Integer("1"),
+		tokens.Integer("2"),
+		tokens.Integer("3"),
+		tokens.RParen(),
+		tokens.LParen(),
+		tokens.Identifier("/"),
+		tokens.Integer("1"),
+		tokens.Integer("2"),
+		tokens.RParen(),
+		tokens.RParen(),
+		tokens.EOF(),
 	})
 }
 
 func TestTokenTypes(t *testing.T) {
 	t.Parallel()
-	tok := tokenizer.New("1.23")
-	util.AssertTokens(t, tok, []tokenizer.Token{
-		tokenizer.Float("1.23"),
-		tokenizer.EOF(),
+	tok, err := tokenizer.Tokenize("1.23")
+	util.Assert(t, err).NotError()
+	util.Assert(t, tok).Tokens([]tokenizer.Token{
+		tokens.Float("1.23"),
+		tokens.EOF(),
 	})
 
-	tok = tokenizer.New("123")
-	util.AssertTokens(t, tok, []tokenizer.Token{
-		tokenizer.Integer("123"),
-		tokenizer.EOF(),
+	tok, err = tokenizer.Tokenize("123")
+	util.Assert(t, err).NotError()
+	util.Assert(t, tok).Tokens([]tokenizer.Token{
+		tokens.Integer("123"),
+		tokens.EOF(),
 	})
 
-	tok = tokenizer.New("\"1.23\"")
-	util.AssertTokens(t, tok, []tokenizer.Token{
-		tokenizer.String("\"1.23\""),
-		tokenizer.EOF(),
+	tok, err = tokenizer.Tokenize("\"1.23\"")
+	util.Assert(t, err).NotError()
+	util.Assert(t, tok).Tokens([]tokenizer.Token{
+		tokens.String("\"1.23\""),
+		tokens.EOF(),
 	})
 
-	tok = tokenizer.New("hello")
-	util.AssertTokens(t, tok, []tokenizer.Token{
-		tokenizer.Identifier("hello"),
-		tokenizer.EOF(),
+	tok, err = tokenizer.Tokenize("hello")
+	util.Assert(t, err).NotError()
+	util.Assert(t, tok).Tokens([]tokenizer.Token{
+		tokens.Identifier("hello"),
+		tokens.EOF(),
 	})
 
-	tok = tokenizer.New("+")
-	util.AssertTokens(t, tok, []tokenizer.Token{
-		tokenizer.Operator("+"),
-		tokenizer.EOF(),
+	tok, err = tokenizer.Tokenize("+")
+	util.Assert(t, err).NotError()
+	util.Assert(t, tok).Tokens([]tokenizer.Token{
+		tokens.Identifier("+"),
+		tokens.EOF(),
 	})
 }

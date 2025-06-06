@@ -4,252 +4,207 @@ import (
 	"fmt"
 )
 
-type Tokenizer struct {
+type tokenizerState struct {
 	source    string
 	readerPos int
+	token     Token
 }
 
-type tokenizerStep struct {
-	token Token // token to return
-	next  int   // next reader position
+func InvalidToken(source string) tokenizerState {
+	return tokenizerState{
+		source:    source,
+		readerPos: 0,
+		token:     Token{Type: TokenTypeInvalid},
+	}
 }
 
-var InvalidToken = tokenizerStep{
-	token: Token{Type: TokenTypeInvalid},
-	next:  0,
+var Nothing = tokenizerState{
+	source:    "",
+	readerPos: 0,
+	token:     Token{Type: TokenTypeNothing},
 }
 
-var NoToken = tokenizerStep{
-	token: Token{Type: TokenTypeInvalid},
-	next:  0,
+var EndOfFile = tokenizerState{
+	source:    "",
+	readerPos: 0,
+	token:     Token{Type: TokenTypeEOF},
 }
 
-func New(source string) *Tokenizer {
-	return &Tokenizer{
+func Tokenize(source string) ([]Token, error) {
+	state := tokenizerState{
 		source:    source,
 		readerPos: 0,
 	}
-}
 
-func (t *Tokenizer) Tokens() []Token {
 	tokens := make([]Token, 0)
 	for {
-		token := t.nextToken()
-		tokens = append(tokens, token)
-		if token.Type == TokenTypeEOF {
+		state = nextToken(state)
+		tokens = append(tokens, state.token)
+		if state.token.Type == TokenTypeInvalid {
+			return nil, fmt.Errorf("invalid token: %s", state.token.String())
+		}
+		if state.token.Type == TokenTypeEOF {
 			break
 		}
 	}
-	return tokens
+	return tokens, nil
 }
 
-func (t *Tokenizer) nextToken() Token {
-	step := t.advance()
-	if step == InvalidToken {
-		return Invalid(fmt.Sprintf("invalid token: %s", step.token.String()))
+func nextToken(state tokenizerState) tokenizerState {
+	step := readToken(state)
+	if step.token.Type == TokenTypeInvalid {
+		return InvalidToken(fmt.Sprintf("invalid token: %s", step.token.String()))
 	}
-
-	t.readerPos = step.next
 	if step.token.Type == TokenTypeEOF {
-		return EOF()
+		return EndOfFile
 	}
-	if step.token.Type == tokenTypeWhitespace {
-		return t.nextToken()
+	if step.token.Type == TokenTypeWhitespace {
+		return nextToken(step)
 	}
-	return step.token
+	return step
 }
 
-func (t *Tokenizer) peek(offset int) rune {
-	if t.readerPos+offset < len(t.source) {
-		return rune(t.source[t.readerPos+offset])
+func peek(state tokenizerState, offset int) rune {
+	if state.readerPos+offset < len(state.source) {
+		return rune(state.source[state.readerPos+offset])
 	}
 	return 0
 }
 
-func (t *Tokenizer) read(size int) string {
-	return t.source[t.readerPos : t.readerPos+size]
+func read(state tokenizerState, size int) string {
+	return state.source[state.readerPos : state.readerPos+size]
 }
 
-func (t *Tokenizer) advance() tokenizerStep {
-	if t.readerPos >= len(t.source) {
-		return tokenizerStep{
-			token: Token{Type: TokenTypeEOF, Value: ""},
-			next:  t.readerPos,
-		}
+func readToken(state tokenizerState) tokenizerState {
+	if state.readerPos >= len(state.source) {
+		return EndOfFile
 	}
-	if tok := t.readSyntax(); tok != NoToken {
+	if tok := readSyntax(state); tok.token.Type != TokenTypeNothing {
 		return tok
 	}
-	if tok := t.readNumber(); tok != NoToken {
+	if tok := readNumber(state); tok.token.Type != TokenTypeNothing {
 		return tok
 	}
-	if tok := t.readString(); tok != NoToken {
+	if tok := readString(state); tok.token.Type != TokenTypeNothing {
 		return tok
 	}
-	if tok := t.readIdentifier(); tok != NoToken {
+	if tok := readIdentifier(state); tok.token.Type != TokenTypeNothing {
 		return tok
 	}
-	if tok := t.readOperator(); tok != NoToken {
+	if tok := readOperator(state); tok.token.Type != TokenTypeNothing {
 		return tok
 	}
-	if tok := t.readWhitespace(); tok != NoToken {
+	if tok := readWhitespace(state); tok.token.Type != TokenTypeNothing {
 		return tok
 	}
-	return InvalidToken
+	return InvalidToken(fmt.Sprintf("invalid token at %d: %s", state.readerPos, state.source[state.readerPos:min(state.readerPos+10, len(state.source))]))
 }
 
-func (t *Tokenizer) readSyntax() tokenizerStep {
-	if isLeftParenChar(t.peek(0)) {
-		return tokenizerStep{
-			token: LParen(),
-			next:  t.readerPos + 1,
+func readSyntax(state tokenizerState) tokenizerState {
+	if isLeftParenChar(peek(state, 0)) {
+		return tokenizerState{
+			source:    state.source,
+			token:     Token{Type: TokenTypeLParen, Value: read(state, 1)},
+			readerPos: state.readerPos + 1,
 		}
-	} else if isRightParenChar(t.peek(0)) {
-		return tokenizerStep{
-			token: RParen(),
-			next:  t.readerPos + 1,
+	} else if isRightParenChar(peek(state, 0)) {
+		return tokenizerState{
+			source:    state.source,
+			token:     Token{Type: TokenTypeRParen, Value: read(state, 1)},
+			readerPos: state.readerPos + 1,
 		}
 	}
-	return NoToken
+	return Nothing
 }
 
-func (t *Tokenizer) readNumber() tokenizerStep {
-	number := t.lookaheadWhile(0, isNumberChar)
+func readNumber(state tokenizerState) tokenizerState {
+	number := lookaheadWhile(state, 0, isNumberChar)
 	if number > 0 {
-		if isAccessChar(t.peek(number)) {
+		if isFloatSeparatorChar(peek(state, number)) {
 			number += 1
-			number += t.lookaheadWhile(number, isNumberChar)
-			return tokenizerStep{
-				token: Float(t.read(number)),
-				next:  t.readerPos + number,
+			number += lookaheadWhile(state, number, isNumberChar)
+			return tokenizerState{
+				source:    state.source,
+				token:     Token{Type: TokenTypeFloat, Value: read(state, number)},
+				readerPos: state.readerPos + number,
 			}
 		}
-		return tokenizerStep{
-			token: Integer(t.read(number)),
-			next:  t.readerPos + number,
+		return tokenizerState{
+			source:    state.source,
+			token:     Token{Type: TokenTypeInteger, Value: read(state, number)},
+			readerPos: state.readerPos + number,
 		}
 	}
-	return NoToken
+	return Nothing
 }
 
-func (t *Tokenizer) readString() tokenizerStep {
-	if isQuoteChar(t.peek(0)) {
+func readString(state tokenizerState) tokenizerState {
+	if isQuoteChar(peek(state, 0)) {
 		offset := 1
-		offset += t.lookaheadUntil(1, isQuoteChar)
+		offset += lookaheadUntil(state, 1, isQuoteChar)
 
-		if isQuoteChar(t.peek(offset)) {
+		if isQuoteChar(peek(state, offset)) {
 			offset += 1
-			return tokenizerStep{
-				token: String(t.read(offset)),
-				next:  t.readerPos + offset,
+			return tokenizerState{
+				source:    state.source,
+				token:     Token{Type: TokenTypeString, Value: read(state, offset)},
+				readerPos: state.readerPos + offset,
 			}
 		}
 	}
-	return NoToken
+	return Nothing
 }
 
-func (t *Tokenizer) readIdentifier() tokenizerStep {
-	if isAlphaChar(t.peek(0)) {
-		offset := t.lookaheadWhile(1, isIdentifierChar)
+func readIdentifier(state tokenizerState) tokenizerState {
+	if isAlphaChar(peek(state, 0)) {
+		offset := lookaheadWhile(state, 1, isIdentifierChar)
 		if offset > 0 {
-			return tokenizerStep{
-				token: Identifier(t.read(offset + 1)),
-				next:  t.readerPos + offset + 1,
+			return tokenizerState{
+				source:    state.source,
+				token:     Token{Type: TokenTypeIdentifier, Value: read(state, offset+1)},
+				readerPos: state.readerPos + offset + 1,
 			}
 		}
 	}
-	return NoToken
+	return Nothing
 }
 
-func (t *Tokenizer) readOperator() tokenizerStep {
-	if isOperatorChar(t.peek(0)) {
-		return tokenizerStep{
-			token: Operator(t.read(1)),
-			next:  t.readerPos + 1,
-		}
-	}
-	return NoToken
-}
-
-func (t *Tokenizer) readWhitespace() tokenizerStep {
-	offset := t.lookaheadWhile(0, isWhitespaceChar)
+func readOperator(state tokenizerState) tokenizerState {
+	offset := lookaheadWhile(state, 0, isOperatorChar)
 	if offset > 0 {
-		return tokenizerStep{
-			token: Whitespace(t.read(offset)),
-			next:  t.readerPos + offset,
+		return tokenizerState{
+			source:    state.source,
+			token:     Token{Type: TokenTypeIdentifier, Value: read(state, offset)},
+			readerPos: state.readerPos + offset,
 		}
 	}
-	return NoToken
+	return Nothing
 }
 
-func (t *Tokenizer) lookaheadWhile(offset int, predicate func(r rune) bool) int {
+func readWhitespace(state tokenizerState) tokenizerState {
+	offset := lookaheadWhile(state, 0, isWhitespaceChar)
+	if offset > 0 {
+		return tokenizerState{
+			source:    state.source,
+			token:     Token{Type: TokenTypeWhitespace, Value: read(state, offset)},
+			readerPos: state.readerPos + offset,
+		}
+	}
+	return Nothing
+}
+
+func lookaheadWhile(state tokenizerState, offset int, predicate func(r rune) bool) int {
 	i := 0
-	for predicate(t.peek(offset + i)) {
+	for predicate(peek(state, offset+i)) {
 		i++
 	}
 	return i
 }
 
-func (t *Tokenizer) lookaheadUntil(offset int, predicate func(r rune) bool) int {
+func lookaheadUntil(state tokenizerState, offset int, predicate func(r rune) bool) int {
 	i := 0
-	for !predicate(t.peek(offset + i)) {
+	for !predicate(peek(state, offset+i)) {
 		i++
 	}
 	return i
-}
-
-func isWhitespaceChar(r rune) bool {
-	return r == ' ' || r == '\t' || r == '\n' || r == '\r'
-}
-
-func isIdentifierChar(r rune) bool {
-	return isAlphaChar(r) || isNumberChar(r) || isSeparatorChar(r)
-}
-
-func isQuoteChar(r rune) bool {
-	return r == '"'
-}
-
-func isLeftParenChar(r rune) bool {
-	return r == '('
-}
-
-func isRightParenChar(r rune) bool {
-	return r == ')'
-}
-
-func isLeftBraceChar(r rune) bool {
-	return r == '{'
-}
-
-func isRightBraceChar(r rune) bool {
-	return r == '}'
-}
-
-func isLeftBracketChar(r rune) bool {
-	return r == '['
-}
-
-func isRightBracketChar(r rune) bool {
-	return r == ']'
-}
-
-func isAccessChar(r rune) bool {
-	return r == '.'
-}
-
-func isSeparatorChar(r rune) bool {
-	return r == '_'
-}
-
-func isAlphaChar(r rune) bool {
-	return r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z'
-}
-
-func isNumberChar(r rune) bool {
-	return r >= '0' && r <= '9'
-}
-
-func isOperatorChar(r rune) bool {
-	return r == '+' || r == '-' || r == '*' || r == '/' || r == '%' || r == '=' || r == '<' || r == '>' || r == '&' || r == '|' || r == '^' || r == '~' || r == '!'
 }

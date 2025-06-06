@@ -8,16 +8,8 @@ import (
 	"github.com/Olian04/go-lisp/lisp/tokenizer"
 )
 
-type Parser struct {
-	tokens []tokenizer.Token
-}
-
-func New(tokens []tokenizer.Token) *Parser {
-	return &Parser{tokens: tokens}
-}
-
-func (p *Parser) Parse() (ast.Program, error) {
-	statements, remaining := p.parseStatements(p.tokens)
+func Parse(tokens []tokenizer.Token) (ast.Program, error) {
+	statements, remaining := parseStatements(tokens)
 	if len(remaining) > 0 {
 		return ast.Program{}, fmt.Errorf("unexpected tokens after end of program: %v", remaining)
 	}
@@ -26,13 +18,13 @@ func (p *Parser) Parse() (ast.Program, error) {
 	}, nil
 }
 
-func (p *Parser) parseStatements(tokens []tokenizer.Token) ([]ast.Statement, []tokenizer.Token) {
+func parseStatements(tokens []tokenizer.Token) ([]ast.Statement, []tokenizer.Token) {
 	statements := make([]ast.Statement, 0)
 	remaining := tokens
 	maxIterations := len(tokens) * 1000
 	for len(remaining) > 0 {
 		var stmt ast.Statement
-		stmt, remaining = p.parseStatement(remaining)
+		stmt, remaining = parseStatement(remaining)
 		if stmt != nil {
 			statements = append(statements, stmt)
 		}
@@ -44,26 +36,26 @@ func (p *Parser) parseStatements(tokens []tokenizer.Token) ([]ast.Statement, []t
 	return statements, remaining
 }
 
-func (p *Parser) parseStatement(tokens []tokenizer.Token) (ast.Statement, []tokenizer.Token) {
-	sexp, remaining := p.parseSExp(tokens)
+func parseStatement(tokens []tokenizer.Token) (ast.Statement, []tokenizer.Token) {
+	sexp, remaining := parseSExp(tokens)
 	if sexp != nil {
 		return sexp, remaining
 	}
 
-	literal, remaining := p.parseLiteral(tokens)
+	literal, remaining := parseLiteral(tokens)
 	if literal != nil {
 		return literal, remaining
 	}
 	return nil, remaining
 }
 
-func (p *Parser) parseSExp(tokens []tokenizer.Token) (ast.Statement, []tokenizer.Token) {
+func parseSExp(tokens []tokenizer.Token) (ast.Statement, []tokenizer.Token) {
 	tok, remaining := nextToken(tokens)
 	if tok.Type != tokenizer.TokenTypeLParen {
 		return nil, tokens
 	}
 	identifier, remaining := nextToken(remaining)
-	if identifier.Type != tokenizer.TokenTypeIdentifier && identifier.Type != tokenizer.TokenTypeOperator {
+	if identifier.Type != tokenizer.TokenTypeIdentifier {
 		return nil, tokens
 	}
 	arguments := make([]ast.Statement, 0)
@@ -74,7 +66,7 @@ func (p *Parser) parseSExp(tokens []tokenizer.Token) (ast.Statement, []tokenizer
 			break
 		}
 		var stmt ast.Statement
-		stmt, remaining = p.parseStatement(remaining)
+		stmt, remaining = parseStatement(remaining)
 		if stmt == nil {
 			return nil, tokens
 		}
@@ -83,10 +75,13 @@ func (p *Parser) parseSExp(tokens []tokenizer.Token) (ast.Statement, []tokenizer
 	if tok.Type != tokenizer.TokenTypeRParen {
 		return nil, tokens
 	}
-	return ast.Function(identifier.Value, arguments), remaining
+	return ast.Expression{
+		Identifier: identifier.Value,
+		Arguments:  arguments,
+	}, remaining
 }
 
-func (p *Parser) parseLiteral(tokens []tokenizer.Token) (ast.Statement, []tokenizer.Token) {
+func parseLiteral(tokens []tokenizer.Token) (ast.Statement, []tokenizer.Token) {
 	tok, remaining := nextToken(tokens)
 	switch tok.Type {
 	case tokenizer.TokenTypeInteger:
@@ -94,15 +89,24 @@ func (p *Parser) parseLiteral(tokens []tokenizer.Token) (ast.Statement, []tokeni
 		if err != nil {
 			return nil, tokens
 		}
-		return ast.Integer(int(value)), remaining
+		return ast.Literal{
+			Variant: ast.LiteralVariantInteger,
+			Value:   int(value),
+		}, remaining
 	case tokenizer.TokenTypeFloat:
 		value, err := strconv.ParseFloat(tok.Value, 64)
 		if err != nil {
 			return nil, tokens
 		}
-		return ast.Float(value), remaining
+		return ast.Literal{
+			Variant: ast.LiteralVariantFloat,
+			Value:   value,
+		}, remaining
 	case tokenizer.TokenTypeString:
-		return ast.String(tok.Value), remaining
+		return ast.Literal{
+			Variant: ast.LiteralVariantString,
+			Value:   tok.Value,
+		}, remaining
 	default:
 		return nil, tokens
 	}
@@ -110,14 +114,14 @@ func (p *Parser) parseLiteral(tokens []tokenizer.Token) (ast.Statement, []tokeni
 
 func nextToken(tokens []tokenizer.Token) (tokenizer.Token, []tokenizer.Token) {
 	if len(tokens) == 0 {
-		return tokenizer.EOF(), tokens
+		return tokenizer.Token{Type: tokenizer.TokenTypeEOF}, tokens
 	}
 	return tokens[0], tokens[1:]
 }
 
 func peekToken(tokens []tokenizer.Token) tokenizer.Token {
 	if len(tokens) == 0 {
-		return tokenizer.EOF()
+		return tokenizer.Token{Type: tokenizer.TokenTypeEOF}
 	}
 	return tokens[0]
 }

@@ -23,21 +23,16 @@ func (l Literal) Kind() StatementKind {
 }
 
 func (l Literal) String() string {
-	return fmt.Sprintf("%v", l.Value)
-}
-
-func Integer(value int) Literal {
-	return Literal{Variant: LiteralVariantInteger, Value: value}
-}
-
-func Float(value float64) Literal {
-	return Literal{Variant: LiteralVariantFloat, Value: value}
-}
-
-func String(value string) Literal {
-	return Literal{Variant: LiteralVariantString, Value: value}
-}
-
-func Boolean(value bool) Literal {
-	return Literal{Variant: LiteralVariantBoolean, Value: value}
+	switch l.Variant {
+	case LiteralVariantInteger:
+		return fmt.Sprintf("%d", l.Value)
+	case LiteralVariantFloat:
+		return fmt.Sprintf("%f", l.Value)
+	case LiteralVariantString:
+		return fmt.Sprintf("\"%s\"", l.Value)
+	case LiteralVariantBoolean:
+		return fmt.Sprintf("%t", l.Value)
+	default:
+		return fmt.Sprintf("%v", l.Value)
+	}
 }

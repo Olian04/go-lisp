@@ -3,9 +3,9 @@ package ast
 type StatementKind string
 
 const (
-	StatementKindSExp    StatementKind = "SExp"
-	StatementKindLiteral StatementKind = "Literal"
-	StatementKindNothing StatementKind = "Nothing"
+	StatementKindExpression StatementKind = "Expression"
+	StatementKindLiteral    StatementKind = "Literal"
+	StatementKindNothing    StatementKind = "Nothing"
 )
 
 type Statement interface {

@@ -23,12 +23,16 @@ func main() {
 		if input == "exit" {
 			break
 		}
-		tokens := tokenizer.New(input).Tokens()
+		tokens, err := tokenizer.Tokenize(input)
+		if err != nil {
+			fmt.Println("Error tokenizing input:", err)
+			continue
+		}
 		for _, token := range tokens {
 			fmt.Println(token.String())
 		}
 		fmt.Println("--------------------------------")
-		program, err := parser.New(tokens).Parse()
+		program, err := parser.Parse(tokens)
 		if err != nil {
 			fmt.Println("Error parsing program:", err)
 			continue
