@@ -123,15 +123,10 @@ func readNumber(state tokenizerState) tokenizerState {
 		if isFloatSeparatorChar(peek(state, number)) {
 			number += 1
 			number += lookaheadWhile(state, number, isNumberChar)
-			return tokenizerState{
-				source:    state.source,
-				token:     Token{Type: TokenTypeFloat, Value: read(state, number)},
-				readerPos: state.readerPos + number,
-			}
 		}
 		return tokenizerState{
 			source:    state.source,
-			token:     Token{Type: TokenTypeInteger, Value: read(state, number)},
+			token:     Token{Type: TokenTypeNumber, Value: read(state, number)},
 			readerPos: state.readerPos + number,
 		}
 	}

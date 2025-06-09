@@ -2,12 +2,8 @@ package tokens
 
 import "github.com/Olian04/go-lisp/lisp/tokenizer"
 
-func Integer(value string) tokenizer.Token {
-	return tokenizer.Token{Type: tokenizer.TokenTypeInteger, Value: value}
-}
-
-func Float(value string) tokenizer.Token {
-	return tokenizer.Token{Type: tokenizer.TokenTypeFloat, Value: value}
+func Number(value string) tokenizer.Token {
+	return tokenizer.Token{Type: tokenizer.TokenTypeNumber, Value: value}
 }
 
 func String(value string) tokenizer.Token {

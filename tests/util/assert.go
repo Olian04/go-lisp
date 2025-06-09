@@ -3,7 +3,7 @@ package util
 import (
 	"testing"
 
-	"github.com/Olian04/go-lisp/lisp/ast"
+	"github.com/Olian04/go-lisp/lisp/parser/ast"
 	"github.com/Olian04/go-lisp/lisp/tokenizer"
 )
 
@@ -154,7 +154,7 @@ func (a assertBuilder) Tokens(expected []tokenizer.Token) assertBuilder {
 	return a
 }
 
-func (a assertBuilder) Program(expected ast.Program) assertBuilder {
+func (a assertBuilder) Program(expected ...ast.Statement) assertBuilder {
 	a.tb.Helper()
 	actual := a.value.(ast.Program)
 	if len(actual) != len(expected) {

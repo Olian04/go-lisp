@@ -3,7 +3,6 @@ package tests
 import (
 	"testing"
 
-	internalAst "github.com/Olian04/go-lisp/lisp/ast"
 	"github.com/Olian04/go-lisp/lisp/parser"
 	"github.com/Olian04/go-lisp/lisp/tokenizer"
 	"github.com/Olian04/go-lisp/tests/util"
@@ -16,17 +15,14 @@ func TestParserSimpleExpression(t *testing.T) {
 	program, err := parser.Parse([]tokenizer.Token{
 		tokens.LParen(),
 		tokens.Identifier("+"),
-		tokens.Integer("1"),
-		tokens.Integer("2"),
+		tokens.Number("1"),
+		tokens.Number("2"),
 		tokens.RParen(),
 	})
 	util.Assert(t, err).NotError()
-	util.Assert(t, program).Program([]internalAst.Statement{
-		ast.Expression("+", []internalAst.Statement{
-			ast.Integer(1),
-			ast.Integer(2),
-		}),
-	})
+	util.Assert(t, program).Program(
+		ast.Expression("+", ast.Number(1), ast.Number(2)),
+	)
 }
 
 func TestParserHelloWorld(t *testing.T) {
@@ -38,11 +34,9 @@ func TestParserHelloWorld(t *testing.T) {
 		tokens.RParen(),
 	})
 	util.Assert(t, err).NotError()
-	util.Assert(t, program).Program([]internalAst.Statement{
-		ast.Expression("print", []internalAst.Statement{
-			ast.String("\"Hello, World!\""),
-		}),
-	})
+	util.Assert(t, program).Program(
+		ast.Expression("print", ast.String("\"Hello, World!\"")),
+	)
 }
 
 func TestParserNestedExpressions(t *testing.T) {
@@ -52,29 +46,29 @@ func TestParserNestedExpressions(t *testing.T) {
 		tokens.Identifier("print"),
 		tokens.LParen(),
 		tokens.Identifier("+"),
-		tokens.Integer("1"),
-		tokens.Integer("2"),
-		tokens.Integer("3"),
+		tokens.Number("1"),
+		tokens.Number("2"),
+		tokens.Number("3"),
 		tokens.RParen(),
 		tokens.LParen(),
 		tokens.Identifier("/"),
-		tokens.Integer("1"),
-		tokens.Integer("2"),
+		tokens.Number("1"),
+		tokens.Number("2"),
 		tokens.RParen(),
 		tokens.RParen(),
 	})
 	util.Assert(t, err).NotError()
-	util.Assert(t, program).Program([]internalAst.Statement{
-		ast.Expression("print", []internalAst.Statement{
-			ast.Expression("+", []internalAst.Statement{
-				ast.Integer(1),
-				ast.Integer(2),
-				ast.Integer(3),
-			}),
-			ast.Expression("/", []internalAst.Statement{
-				ast.Integer(1),
-				ast.Integer(2),
-			}),
-		}),
-	})
+	util.Assert(t, program).Program(
+		ast.Expression("print",
+			ast.Expression("+",
+				ast.Number(1),
+				ast.Number(2),
+				ast.Number(3),
+			),
+			ast.Expression("/",
+				ast.Number(1),
+				ast.Number(2),
+			),
+		),
+	)
 }

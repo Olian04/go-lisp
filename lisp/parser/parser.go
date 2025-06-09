@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Olian04/go-lisp/lisp/ast"
+	"github.com/Olian04/go-lisp/lisp/parser/ast"
 	"github.com/Olian04/go-lisp/lisp/tokenizer"
 )
 
@@ -82,22 +82,13 @@ func parseSExp(tokens []tokenizer.Token) (ast.Statement, []tokenizer.Token) {
 func parseLiteral(tokens []tokenizer.Token) (ast.Statement, []tokenizer.Token) {
 	tok, remaining := nextToken(tokens)
 	switch tok.Type {
-	case tokenizer.TokenTypeInteger:
-		value, err := strconv.ParseInt(tok.Value, 10, 64)
-		if err != nil {
-			return nil, tokens
-		}
-		return ast.Literal{
-			Variant: ast.LiteralVariantInteger,
-			Value:   int(value),
-		}, remaining
-	case tokenizer.TokenTypeFloat:
+	case tokenizer.TokenTypeNumber:
 		value, err := strconv.ParseFloat(tok.Value, 64)
 		if err != nil {
 			return nil, tokens
 		}
 		return ast.Literal{
-			Variant: ast.LiteralVariantFloat,
+			Variant: ast.LiteralVariantNumber,
 			Value:   value,
 		}, remaining
 	case tokenizer.TokenTypeString:

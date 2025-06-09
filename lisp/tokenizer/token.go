@@ -5,12 +5,18 @@ import "fmt"
 type TokenType string
 
 const (
-	TokenTypeInteger    TokenType = "Integer"
-	TokenTypeFloat      TokenType = "Float"
-	TokenTypeString     TokenType = "String"
 	TokenTypeIdentifier TokenType = "Identifier"
-	TokenTypeLParen     TokenType = "LParen"
-	TokenTypeRParen     TokenType = "RParen"
+	TokenTypeNumber     TokenType = "Number"
+	TokenTypeString     TokenType = "String"
+	TokenTypeBoolean    TokenType = "Boolean" // TODO: Implement this
+
+	TokenTypeLParen   TokenType = "LParen"
+	TokenTypeRParen   TokenType = "RParen"
+	TokenTypeLBrace   TokenType = "LBrace"   // TODO: Implement this
+	TokenTypeRBrace   TokenType = "RBrace"   // TODO: Implement this
+	TokenTypeLBracket TokenType = "LBracket" // TODO: Implement this
+	TokenTypeRBracket TokenType = "RBracket" // TODO: Implement this
+
 	TokenTypeEOF        TokenType = "EOF"
 	TokenTypeInvalid    TokenType = "Invalid"
 	TokenTypeNothing    TokenType = "Nothing"
@@ -24,10 +30,8 @@ type Token struct {
 
 func (t Token) String() string {
 	switch t.Type {
-	case TokenTypeInteger:
-		return fmt.Sprintf("(Integer %s)", t.Value)
-	case TokenTypeFloat:
-		return fmt.Sprintf("(Float %s)", t.Value)
+	case TokenTypeNumber:
+		return fmt.Sprintf("(Number %s)", t.Value)
 	case TokenTypeString:
 		return fmt.Sprintf("(String %s)", t.Value)
 	case TokenTypeIdentifier:
